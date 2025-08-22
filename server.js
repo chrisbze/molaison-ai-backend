@@ -1,4 +1,4 @@
-// Molaison AI - Simple Backend with Real Broken Links and Keywords
+// Molaison AI - Backend with Real GEO Analysis
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -17,6 +17,18 @@ let customers = new Map();
 let customerCount = 0;
 const MAX_CUSTOMERS = 100;
 
+// Add test customer for demo
+customers.set('test@example.com', {
+    email: 'test@example.com',
+    name: 'Test User',
+    accessCode: 'TEST123',
+    joinDate: new Date(),
+    paymentAmount: 97,
+    sessionToken: null,
+    lastLogin: null
+});
+customerCount = 1;
+
 // 1. HEALTH CHECK
 app.get('/', (req, res) => {
     res.json({
@@ -24,7 +36,7 @@ app.get('/', (req, res) => {
         customers: customerCount,
         maxCustomers: MAX_CUSTOMERS,
         spotsLeft: MAX_CUSTOMERS - customerCount,
-        features: ['Real SEO Analysis', 'Real Broken Links', 'Real Keywords']
+        features: ['Real SEO Analysis', 'Real Broken Links', 'Real Keywords', 'Real GEO Analysis', 'Real Technical SEO']
     });
 });
 
@@ -174,6 +186,173 @@ app.post('/api/extract-keywords', async (req, res) => {
     }
 });
 
+// 5. REAL TECHNICAL SEO ANALYSIS
+app.post('/api/analyze-technical-seo', async (req, res) => {
+    try {
+        const { url } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+        
+        console.log(`Running real technical SEO analysis for: ${url}`);
+        
+        const techData = await analyzeRealTechnicalSEO(url);
+        
+        res.json({
+            success: true,
+            data: techData,
+            message: 'Technical SEO analysis complete'
+        });
+        
+    } catch (error) {
+        console.error('Technical SEO Analysis Error:', error);
+        res.status(500).json({ error: 'Technical SEO analysis failed: ' + error.message });
+    }
+});
+
+// 6. REAL GEO ANALYSIS
+app.post('/api/analyze-geo', async (req, res) => {
+    try {
+        const { url, topic } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({ error: 'URL is required' });
+        }
+        
+        console.log(`Running real GEO analysis for: ${url}`);
+        
+        const geoData = await analyzeGEOOptimization(url, topic);
+        
+        res.json({
+            success: true,
+            data: geoData,
+            message: 'GEO analysis complete'
+        });
+        
+    } catch (error) {
+        console.error('GEO Analysis Error:', error);
+        res.status(500).json({ error: 'GEO analysis failed: ' + error.message });
+    }
+});
+
+// 7. AUTHENTICATION ENDPOINTS
+app.post('/api/verify-access', async (req, res) => {
+    try {
+        const { email, accessCode } = req.body;
+        
+        if (!email || !accessCode) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Email and access code are required' 
+            });
+        }
+        
+        console.log(`Access verification attempt for: ${email}`);
+        
+        // Check if customer exists and has valid access
+        const customer = customers.get(email.toLowerCase());
+        
+        if (!customer) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Access code not found. Please check your email or purchase access.' 
+            });
+        }
+        
+        if (customer.accessCode !== accessCode) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Invalid access code. Please check your email for the correct code.' 
+            });
+        }
+        
+        // Generate session token
+        const token = crypto.randomBytes(32).toString('hex');
+        customer.sessionToken = token;
+        customer.lastLogin = new Date();
+        
+        res.json({
+            success: true,
+            token: token,
+            message: 'Access verified successfully',
+            user: {
+                email: customer.email,
+                joinDate: customer.joinDate
+            }
+        });
+        
+    } catch (error) {
+        console.error('Access verification error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Verification failed. Please try again.' 
+        });
+    }
+});
+
+// 8. GHL WEBHOOK - Customer Registration
+app.post('/api/ghl-webhook', async (req, res) => {
+    try {
+        const { contact, payment } = req.body;
+        
+        if (!contact || !contact.email) {
+            return res.status(400).json({ error: 'Invalid webhook data' });
+        }
+        
+        console.log(`New customer registration: ${contact.email}`);
+        
+        // Generate access code
+        const accessCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+        
+        // Store customer
+        const customerData = {
+            email: contact.email.toLowerCase(),
+            name: contact.firstName + ' ' + (contact.lastName || ''),
+            accessCode: accessCode,
+            joinDate: new Date(),
+            paymentAmount: payment?.amount || 97,
+            sessionToken: null,
+            lastLogin: null
+        };
+        
+        customers.set(contact.email.toLowerCase(), customerData);
+        customerCount++;
+        
+        // TODO: Send email with access code via GHL
+        console.log(`Access code for ${contact.email}: ${accessCode}`);
+        
+        res.json({
+            success: true,
+            accessCode: accessCode,
+            message: 'Customer registered successfully'
+        });
+        
+    } catch (error) {
+        console.error('Webhook error:', error);
+        res.status(500).json({ error: 'Webhook processing failed' });
+    }
+});
+
+// 9. TOKEN VALIDATION MIDDLEWARE
+function validateToken(req, res, next) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+        return res.status(401).json({ error: 'Access token required' });
+    }
+    
+    // Find customer by token
+    const customer = Array.from(customers.values()).find(c => c.sessionToken === token);
+    
+    if (!customer) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    req.customer = customer;
+    next();
+}
+
 // Helper Functions
 async function getPageSpeedInsights(url) {
     const response = await axios.get(`https://www.googleapis.com/pagespeed/insights/v5/runPagespeed`, {
@@ -205,6 +384,294 @@ async function analyzeTechnicalSEO(url) {
         imageCount: (html.match(/<img/g) || []).length,
         linkCount: (html.match(/<a /g) || []).length
     };
+}
+
+// COMPREHENSIVE TECHNICAL SEO ANALYSIS
+async function analyzeRealTechnicalSEO(url) {
+    try {
+        const response = await axios.get(url, {
+            timeout: 15000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MolaisonAI-Bot/1.0)' },
+            maxRedirects: 5
+        });
+        
+        const html = response.data;
+        const headers = response.headers;
+        
+        // Initialize technical scores
+        const scores = {
+            crawlability: 0,
+            mobileFriendly: 0,
+            siteSpeed: 0,
+            security: 0,
+            htmlStructure: 0,
+            metaData: 0
+        };
+        
+        const issues = [];
+        const recommendations = [];
+        
+        // 1. CRAWLABILITY ANALYSIS (100 points possible)
+        let crawlScore = 50; // Base score
+        
+        // Check robots.txt
+        try {
+            const robotsUrl = new URL('/robots.txt', url).href;
+            const robotsResponse = await axios.get(robotsUrl, { timeout: 5000 });
+            if (robotsResponse.status === 200) {
+                crawlScore += 15;
+                if (robotsResponse.data.includes('Sitemap:')) {
+                    crawlScore += 10;
+                }
+            }
+        } catch (error) {
+            issues.push('No robots.txt file found');
+            recommendations.push('Create a robots.txt file to guide search engine crawlers');
+        }
+        
+        // Check XML sitemap
+        try {
+            const sitemapUrl = new URL('/sitemap.xml', url).href;
+            const sitemapResponse = await axios.get(sitemapUrl, { timeout: 5000 });
+            if (sitemapResponse.status === 200 && sitemapResponse.data.includes('<urlset')) {
+                crawlScore += 15;
+            }
+        } catch (error) {
+            issues.push('No XML sitemap found');
+            recommendations.push('Create an XML sitemap to help search engines discover your pages');
+        }
+        
+        // Check meta robots
+        if (html.includes('name="robots"')) {
+            if (!html.includes('noindex') && !html.includes('nofollow')) {
+                crawlScore += 10;
+            }
+        } else {
+            crawlScore += 5; // Default is crawlable
+        }
+        
+        scores.crawlability = Math.min(100, crawlScore);
+        
+        // 2. MOBILE-FRIENDLY ANALYSIS
+        let mobileScore = 30; // Base score
+        
+        // Check viewport meta tag
+        if (html.includes('name="viewport"')) {
+            mobileScore += 25;
+            if (html.includes('width=device-width')) {
+                mobileScore += 15;
+            }
+        } else {
+            issues.push('Missing viewport meta tag');
+            recommendations.push('Add viewport meta tag for mobile responsiveness');
+        }
+        
+        // Check responsive design indicators
+        if (html.includes('@media') || html.includes('responsive') || html.includes('mobile')) {
+            mobileScore += 15;
+        }
+        
+        // Check for mobile-unfriendly elements
+        if (html.includes('flash') || html.includes('.swf')) {
+            mobileScore -= 20;
+            issues.push('Flash content detected (not mobile-friendly)');
+        }
+        
+        scores.mobileFriendly = Math.min(100, mobileScore);
+        
+        // 3. SECURITY ANALYSIS
+        let securityScore = 0;
+        
+        // HTTPS check
+        if (url.startsWith('https://')) {
+            securityScore += 30;
+        } else {
+            issues.push('Website not using HTTPS');
+            recommendations.push('Migrate to HTTPS for security and SEO benefits');
+        }
+        
+        // Security headers check
+        if (headers['strict-transport-security']) {
+            securityScore += 15;
+        }
+        if (headers['x-frame-options']) {
+            securityScore += 10;
+        }
+        if (headers['x-content-type-options']) {
+            securityScore += 10;
+        }
+        if (headers['content-security-policy']) {
+            securityScore += 15;
+        }
+        
+        // Mixed content check
+        if (url.startsWith('https://') && html.includes('http://')) {
+            securityScore -= 10;
+            issues.push('Mixed content detected (HTTP resources on HTTPS page)');
+        }
+        
+        // Basic security indicators
+        if (!html.includes('password') || html.includes('autocomplete="off"')) {
+            securityScore += 10;
+        }
+        
+        scores.security = Math.min(100, Math.max(0, securityScore));
+        
+        // 4. HTML STRUCTURE ANALYSIS
+        let structureScore = 20; // Base score
+        
+        // Title tag
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch && titleMatch[1].trim().length > 0) {
+            structureScore += 15;
+            if (titleMatch[1].length <= 60) {
+                structureScore += 5;
+            }
+        } else {
+            issues.push('Missing or empty title tag');
+        }
+        
+        // H1 tag
+        if (html.includes('<h1')) {
+            structureScore += 15;
+        } else {
+            issues.push('Missing H1 heading');
+        }
+        
+        // Meta description
+        if (html.includes('name="description"')) {
+            structureScore += 15;
+        } else {
+            issues.push('Missing meta description');
+        }
+        
+        // Language declaration
+        if (html.includes('lang=') || html.includes('<html lang')) {
+            structureScore += 10;
+        } else {
+            recommendations.push('Add language declaration to HTML tag');
+        }
+        
+        // Alt text for images
+        const images = html.match(/<img[^>]*>/gi) || [];
+        const imagesWithAlt = images.filter(img => img.includes('alt=')).length;
+        const altTextRatio = images.length > 0 ? (imagesWithAlt / images.length) * 100 : 100;
+        
+        if (altTextRatio >= 80) {
+            structureScore += 15;
+        } else if (altTextRatio >= 50) {
+            structureScore += 8;
+        } else {
+            issues.push(`${Math.round(100 - altTextRatio)}% of images missing alt text`);
+        }
+        
+        scores.htmlStructure = Math.min(100, structureScore);
+        
+        // 5. METADATA ANALYSIS
+        let metaScore = 20; // Base score
+        
+        // Charset
+        if (html.includes('charset=')) {
+            metaScore += 10;
+        }
+        
+        // Open Graph tags
+        const ogTags = ['og:title', 'og:description', 'og:image', 'og:url'];
+        const ogCount = ogTags.filter(tag => html.includes(tag)).length;
+        metaScore += ogCount * 5; // 5 points per OG tag
+        
+        // Twitter Card tags
+        if (html.includes('twitter:card')) {
+            metaScore += 10;
+        }
+        
+        // Canonical URL
+        if (html.includes('rel="canonical"')) {
+            metaScore += 15;
+        } else {
+            recommendations.push('Add canonical URL to prevent duplicate content issues');
+        }
+        
+        // Structured data
+        if (html.includes('application/ld+json')) {
+            metaScore += 20;
+        } else {
+            recommendations.push('Add structured data (JSON-LD) for rich snippets');
+        }
+        
+        scores.metaData = Math.min(100, metaScore);
+        
+        // 6. SITE SPEED ANALYSIS (Use Google PageSpeed if available)
+        let speedScore = 50; // Default
+        
+        try {
+            if (process.env.GOOGLE_API_KEY) {
+                const pageSpeedData = await getPageSpeedInsights(url);
+                speedScore = pageSpeedData.score;
+            }
+        } catch (error) {
+            console.log('PageSpeed analysis failed, using basic metrics');
+        }
+        
+        scores.siteSpeed = speedScore;
+        
+        // Generate overall recommendations
+        if (scores.crawlability < 70) {
+            recommendations.push('Improve crawlability by adding robots.txt and XML sitemap');
+        }
+        if (scores.mobileFriendly < 80) {
+            recommendations.push('Enhance mobile-friendliness with responsive design');
+        }
+        if (scores.security < 80) {
+            recommendations.push('Strengthen security with HTTPS and security headers');
+        }
+        if (scores.htmlStructure < 80) {
+            recommendations.push('Fix HTML structure issues and add missing meta tags');
+        }
+        
+        // Calculate overall technical score
+        const overallScore = Math.round(
+            (scores.crawlability + scores.mobileFriendly + scores.security + 
+             scores.htmlStructure + scores.metaData + scores.siteSpeed) / 6
+        );
+        
+        return {
+            overallScore: overallScore,
+            scores: scores,
+            issues: issues,
+            recommendations: recommendations.slice(0, 8),
+            analysis: {
+                imageCount: images.length,
+                imagesWithAlt: imagesWithAlt,
+                altTextRatio: Math.round(altTextRatio),
+                hasRobotsTxt: crawlScore > 65,
+                hasXMLSitemap: crawlScore > 80,
+                hasHTTPS: url.startsWith('https://'),
+                hasViewport: html.includes('name="viewport"'),
+                hasCanonical: html.includes('rel="canonical"'),
+                hasStructuredData: html.includes('application/ld+json'),
+                ogTagsCount: ogCount,
+                hasTwitterCard: html.includes('twitter:card')
+            }
+        };
+        
+    } catch (error) {
+        return {
+            overallScore: 0,
+            scores: {
+                crawlability: 0,
+                mobileFriendly: 0,
+                siteSpeed: 0,
+                security: 0,
+                htmlStructure: 0,
+                metaData: 0
+            },
+            issues: ['Unable to analyze website technical aspects'],
+            recommendations: ['Website may be inaccessible or behind authentication'],
+            analysis: {},
+            error: error.message
+        };
+    }
 }
 
 async function checkBrokenLinks(url) {
@@ -368,6 +835,227 @@ async function extractKeywords(url) {
     }
 }
 
+// REAL GEO ANALYSIS FUNCTION
+async function analyzeGEOOptimization(url, topic) {
+    try {
+        const response = await axios.get(url, {
+            timeout: 15000,
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MolaisonAI-Bot/1.0)' }
+        });
+        
+        const html = response.data;
+        
+        // Remove scripts and styles for clean text analysis
+        const cleanHtml = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+        
+        const textContent = cleanHtml.replace(/<[^>]*>/g, ' ')
+                                    .replace(/\s+/g, ' ')
+                                    .trim();
+        
+        // Initialize GEO score factors
+        let geoScore = 0;
+        const maxScore = 100;
+        const factors = {
+            directAnswers: 0,
+            structuredContent: 0,
+            faqSections: 0,
+            comprehensiveness: 0,
+            readability: 0,
+            questionFormat: 0
+        };
+        
+        const recommendations = [];
+        
+        // 1. Direct Answers Analysis (25 points)
+        const firstParagraph = getFirstParagraph(cleanHtml);
+        if (firstParagraph.length > 50) {
+            factors.directAnswers = 15;
+            if (containsDirectAnswer(firstParagraph)) {
+                factors.directAnswers = 25;
+            }
+        } else {
+            recommendations.push("Add a clear, direct answer in the first paragraph");
+        }
+        
+        // 2. Structured Content Analysis (20 points)
+        const listCount = (cleanHtml.match(/<(ul|ol)[^>]*>/gi) || []).length;
+        const bulletPoints = (cleanHtml.match(/<li[^>]*>/gi) || []).length;
+        
+        if (listCount > 0 && bulletPoints > 3) {
+            factors.structuredContent = 20;
+        } else if (listCount > 0) {
+            factors.structuredContent = 10;
+        } else {
+            recommendations.push("Add bullet points and numbered lists for better AI parsing");
+        }
+        
+        // 3. FAQ Sections Analysis (20 points)
+        const faqIndicators = [
+            /frequently\s+asked\s+questions/gi,
+            /faq/gi,
+            /q:\s*|question:\s*/gi,
+            /a:\s*|answer:\s*/gi
+        ];
+        
+        let faqScore = 0;
+        faqIndicators.forEach(pattern => {
+            if (pattern.test(cleanHtml)) {
+                faqScore += 5;
+            }
+        });
+        
+        factors.faqSections = Math.min(faqScore, 20);
+        
+        if (factors.faqSections < 10) {
+            recommendations.push("Add an FAQ section with common questions and direct answers");
+        }
+        
+        // 4. Comprehensiveness Analysis (15 points)
+        const wordCount = textContent.split(' ').length;
+        if (wordCount > 1000) {
+            factors.comprehensiveness = 15;
+        } else if (wordCount > 500) {
+            factors.comprehensiveness = 10;
+        } else if (wordCount > 200) {
+            factors.comprehensiveness = 5;
+        } else {
+            recommendations.push("Expand content to provide more comprehensive coverage of the topic");
+        }
+        
+        // 5. Readability Analysis (10 points)
+        const headingCount = (cleanHtml.match(/<h[1-6][^>]*>/gi) || []).length;
+        const paragraphCount = (cleanHtml.match(/<p[^>]*>/gi) || []).length;
+        
+        if (headingCount >= 3 && paragraphCount >= 5) {
+            factors.readability = 10;
+        } else if (headingCount >= 2) {
+            factors.readability = 5;
+        } else {
+            recommendations.push("Improve content structure with more headings and shorter paragraphs");
+        }
+        
+        // 6. Question Format Analysis (10 points)
+        const questionWords = ['what', 'how', 'why', 'when', 'where', 'who'];
+        const headings = (cleanHtml.match(/<h[1-6][^>]*>([^<]+)<\/h[1-6]>/gi) || [])
+                        .map(h => h.replace(/<[^>]*>/g, '').toLowerCase());
+        
+        let questionHeadings = 0;
+        headings.forEach(heading => {
+            if (questionWords.some(qw => heading.includes(qw + ' ')) || heading.includes('?')) {
+                questionHeadings++;
+            }
+        });
+        
+        if (questionHeadings >= 2) {
+            factors.questionFormat = 10;
+        } else if (questionHeadings >= 1) {
+            factors.questionFormat = 5;
+        } else {
+            recommendations.push("Use question-format headings (What is...? How to...?) for better AI understanding");
+        }
+        
+        // Calculate total GEO score
+        geoScore = Object.values(factors).reduce((sum, score) => sum + score, 0);
+        
+        // AI-specific recommendations based on analysis
+        if (topic) {
+            recommendations.push(`Optimize content specifically for "${topic}" queries that AI users commonly ask`);
+        }
+        
+        if (geoScore < 70) {
+            recommendations.push("Consider restructuring content to answer user questions more directly");
+        }
+        
+        if (!cleanHtml.includes('schema.org')) {
+            recommendations.push("Add FAQ schema markup to help AI engines understand your Q&A content");
+        }
+        
+        // Generate specific insights
+        const insights = generateGEOInsights(factors, textContent, topic);
+        
+        return {
+            geoScore: Math.round(geoScore),
+            maxScore: maxScore,
+            percentage: Math.round((geoScore / maxScore) * 100),
+            factors: factors,
+            recommendations: recommendations.slice(0, 8), // Limit to top 8 recommendations
+            insights: insights,
+            analysis: {
+                wordCount: wordCount,
+                headingCount: headingCount,
+                listCount: listCount,
+                bulletPoints: bulletPoints,
+                questionHeadings: questionHeadings,
+                hasDirectAnswer: factors.directAnswers > 15,
+                hasFAQ: factors.faqSections > 10,
+                isComprehensive: factors.comprehensiveness > 10
+            }
+        };
+        
+    } catch (error) {
+        return {
+            geoScore: 0,
+            maxScore: 100,
+            percentage: 0,
+            factors: {},
+            recommendations: ['Unable to analyze website content for GEO optimization'],
+            insights: [],
+            analysis: {},
+            error: error.message
+        };
+    }
+}
+
+function getFirstParagraph(html) {
+    const paragraphMatch = html.match(/<p[^>]*>([^<]+)<\/p>/i);
+    return paragraphMatch ? paragraphMatch[1].trim() : '';
+}
+
+function containsDirectAnswer(text) {
+    const directAnswerPatterns = [
+        /^(yes|no|the answer is|simply|basically|essentially)/i,
+        /(is|are|means|refers to|involves)/i,
+        /^(to|in order to|you can|you should|you need)/i
+    ];
+    
+    return directAnswerPatterns.some(pattern => pattern.test(text));
+}
+
+function generateGEOInsights(factors, content, topic) {
+    const insights = [];
+    
+    if (factors.directAnswers >= 20) {
+        insights.push("✅ Excellent direct answer format - AI engines will easily extract key information");
+    } else if (factors.directAnswers >= 10) {
+        insights.push("⚠️ Good start with direct answers, but could be more concise and clear");
+    } else {
+        insights.push("❌ Missing direct answers - add clear, immediate responses to user questions");
+    }
+    
+    if (factors.structuredContent >= 15) {
+        insights.push("✅ Well-structured content with good use of lists and bullet points");
+    } else {
+        insights.push("⚠️ Content needs better structure - more bullet points and numbered lists");
+    }
+    
+    if (factors.faqSections >= 15) {
+        insights.push("✅ Strong FAQ presence - perfect for AI question-answering");
+    } else if (factors.faqSections >= 5) {
+        insights.push("⚠️ Some Q&A elements found, but could expand FAQ sections");
+    } else {
+        insights.push("❌ No FAQ sections detected - critical for GEO optimization");
+    }
+    
+    if (factors.comprehensiveness >= 12) {
+        insights.push("✅ Comprehensive content coverage");
+    } else {
+        insights.push("⚠️ Content could be more comprehensive and detailed");
+    }
+    
+    return insights;
+}
+
 function isStopWord(word) {
     const stopWords = ['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
     return stopWords.includes(word);
@@ -442,6 +1130,8 @@ app.listen(PORT, () => {
     console.log(`🚀 Molaison AI Backend running on port ${PORT}`);
     console.log(`🔗 Real broken links detection enabled`);
     console.log(`🔍 Real keyword extraction enabled`);
+    console.log(`🤖 Real GEO analysis enabled`);
+    console.log(`🔧 Real technical SEO analysis enabled`);
 });
 
 module.exports = app;
