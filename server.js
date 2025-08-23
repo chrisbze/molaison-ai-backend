@@ -15,7 +15,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // Simple storage
 let customers = new Map();
 let customerCount = 0;
-const MAX_CUSTOMERS = 100;
+const MAX_CUSTOMERS = 1000;
 
 // Add test customer for demo
 customers.set('test@example.com', {
@@ -211,7 +211,146 @@ app.post('/api/analyze-technical-seo', async (req, res) => {
     }
 });
 
-// 6. REAL GEO ANALYSIS
+// 6. SERP COMPETITION ANALYSIS
+app.post('/api/analyze-serp-competition', async (req, res) => {
+    try {
+        const { keyword, location = 'United States' } = req.body;
+        
+        if (!keyword) {
+            return res.status(400).json({ error: 'Keyword is required' });
+        }
+        
+        console.log(`Analyzing SERP competition for: ${keyword}`);
+        
+        // Simulate SERP analysis (in production, you'd use Google Search API or scraping)
+        const serpFeatures = {
+            featuredSnippet: Math.random() > 0.7,
+            localPack: Math.random() > 0.6,
+            knowledgeGraph: Math.random() > 0.5,
+            peopleAlsoAsk: Math.random() > 0.3,
+            videoCarousel: Math.random() > 0.4,
+            imagesPack: Math.random() > 0.5,
+            shoppingResults: Math.random() > 0.8,
+            ads: Math.random() > 0.2 ? Math.floor(Math.random() * 4) + 1 : 0
+        };
+        
+        // Calculate competition level
+        let competitionScore = 0;
+        let serpComplexity = 0;
+        
+        // Count SERP features (more features = more crowded)
+        Object.values(serpFeatures).forEach(feature => {
+            if (typeof feature === 'boolean' && feature) serpComplexity++;
+            if (typeof feature === 'number' && feature > 0) serpComplexity++;
+        });
+        
+        // Competition scoring (0-100)
+        competitionScore = Math.min(100, serpComplexity * 15 + (serpFeatures.ads * 10));
+        
+        // Determine SERP type
+        let serpType = 'Clean';
+        let opportunity = 'High';
+        let strategy = 'Content Marketing';
+        
+        if (competitionScore >= 70) {
+            serpType = 'Very Crowded';
+            opportunity = 'Low';
+            strategy = 'Long-tail Keywords + Niche Content';
+        } else if (competitionScore >= 50) {
+            serpType = 'Crowded';
+            opportunity = 'Medium';
+            strategy = 'Featured Snippet Optimization';
+        } else if (competitionScore >= 30) {
+            serpType = 'Moderate';
+            opportunity = 'Good';
+            strategy = 'Quality Content + Technical SEO';
+        }
+        
+        // Generate pivot recommendations
+        const pivotRecommendations = [];
+        
+        if (serpFeatures.featuredSnippet) {
+            pivotRecommendations.push({
+                type: 'Featured Snippet Opportunity',
+                action: 'Create structured content with clear answers and bullet points',
+                priority: 'High'
+            });
+        }
+        
+        if (serpFeatures.peopleAlsoAsk) {
+            pivotRecommendations.push({
+                type: 'FAQ Content Strategy',
+                action: 'Create comprehensive FAQ sections targeting related questions',
+                priority: 'Medium'
+            });
+        }
+        
+        if (serpFeatures.localPack) {
+            pivotRecommendations.push({
+                type: 'Local SEO Focus',
+                action: 'Optimize for local search with Google My Business and local citations',
+                priority: 'High'
+            });
+        }
+        
+        if (serpFeatures.ads >= 3) {
+            pivotRecommendations.push({
+                type: 'Long-tail Alternative',
+                action: 'Target less competitive long-tail variations of this keyword',
+                priority: 'High'
+            });
+        }
+        
+        if (serpFeatures.videoCarousel) {
+            pivotRecommendations.push({
+                type: 'Video Content Opportunity',
+                action: 'Create video content to compete in video carousel results',
+                priority: 'Medium'
+            });
+        }
+        
+        // If no specific recommendations, add general ones
+        if (pivotRecommendations.length === 0) {
+            pivotRecommendations.push({
+                type: 'Content Gap Analysis',
+                action: 'Analyze top 10 results and create more comprehensive content',
+                priority: 'Medium'
+            });
+        }
+        
+        const results = {
+            keyword: keyword,
+            location: location,
+            serpType: serpType,
+            competitionScore: competitionScore,
+            opportunity: opportunity,
+            recommendedStrategy: strategy,
+            serpFeatures: serpFeatures,
+            pivotRecommendations: pivotRecommendations,
+            analysis: {
+                totalSerpFeatures: serpComplexity,
+                adsCount: serpFeatures.ads,
+                organicSpots: 10 - serpFeatures.ads,
+                difficulty: serpType
+            }
+        };
+        
+        res.json({
+            success: true,
+            data: results,
+            message: `SERP analysis complete for "${keyword}"`
+        });
+        
+    } catch (error) {
+        console.error('SERP analysis error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to analyze SERP competition'
+        });
+    }
+});
+
+// 7. REAL GEO ANALYSIS
 app.post('/api/analyze-geo', async (req, res) => {
     try {
         const { url, topic } = req.body;
